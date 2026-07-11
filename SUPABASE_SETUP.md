@@ -11,14 +11,26 @@ Run both migrations in Supabase Dashboard → SQL Editor:
 
 Click **Run**.
 
-## 2. Auth redirect URLs
+## 2. Auth (email + Google OAuth)
 
-In Supabase Dashboard → Authentication → URL Configuration, add:
+### Email / password
+1. Authentication → Providers → **Email** → enable
+2. Turn **Confirm email** OFF (so signup signs in immediately)
+3. Disable magic link if you want — the app uses password auth now
 
-- Site URL: `http://localhost:3000` (and your Vercel URL after deploy)
+### Google OAuth
+1. Authentication → Providers → **Google** → enable
+2. Create OAuth credentials in [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+   - Authorized redirect URI: `https://potuzocstvlrlmlrneid.supabase.co/auth/v1/callback`
+3. Paste Client ID + Client Secret into Supabase Google provider settings
+
+### Redirect URLs
+Authentication → URL Configuration:
+
+- Site URL: `https://replai-psi.vercel.app` (prod) or `http://localhost:3000` (local)
 - Redirect URLs:
   - `http://localhost:3000/auth/callback`
-  - `https://YOUR_VERCEL_DOMAIN/auth/callback`
+  - `https://replai-psi.vercel.app/auth/callback`
 
 ## 3. Realtime
 
