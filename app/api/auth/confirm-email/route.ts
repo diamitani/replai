@@ -39,7 +39,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 401 });
     }
 
-    await confirmUserEmail(normalized);
+    const confirmed = await confirmUserEmail(normalized);
+    if (!confirmed) {
+      return NextResponse.json(
+        {
+          error:
+            "Email still needs confirmation. Turn Confirm email OFF in Supabase Auth, or set DATABASE_URL on the server.",
+        },
+        { status: 503 }
+      );
+    }
     return NextResponse.json({ ok: true, confirmed: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Confirm failed";

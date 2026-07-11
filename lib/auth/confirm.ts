@@ -1,11 +1,16 @@
 import postgres from "postgres";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+function canForceConfirm() {
+  return Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.DATABASE_URL);
+}
+
 /**
  * Force-confirm an email so the user can sign in without a confirmation link.
  * Prefers service-role admin API; falls back to direct auth.users update.
+ * Returns false when neither credential is configured (DB trigger may still confirm).
  */
-export async function confirmUserEmail(email: string, userId?: string) {
+export async function confirmUserEmail(email: string, userId?: string): Promise<boolean> {
   const normalized = email.trim().toLowerCase();
   const admin = createAdminClient();
 
@@ -15,7 +20,7 @@ export async function confirmUserEmail(email: string, userId?: string) {
         email_confirm: true,
       });
       if (error) throw error;
-      return;
+      return true;
     }
 
     const { data, error } = await admin.auth.admin.listUsers({ perPage: 1000 });
@@ -28,14 +33,12 @@ export async function confirmUserEmail(email: string, userId?: string) {
       email_confirm: true,
     });
     if (updateError) throw updateError;
-    return;
+    return true;
   }
 
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
-    throw new Error(
-      "Missing SUPABASE_SERVICE_ROLE_KEY or DATABASE_URL — cannot auto-confirm email"
-    );
+    return false;
   }
 
   const sql = postgres(databaseUrl, { max: 1, ssl: "require" });
@@ -56,6 +59,8 @@ export async function confirmUserEmail(email: string, userId?: string) {
   } finally {
     await sql.end({ timeout: 5 });
   }
+
+  return true;
 }
 
 export async function createConfirmedUser(input: {
@@ -77,7 +82,6 @@ export async function createConfirmedUser(input: {
     });
 
     if (error) {
-      // Already registered — confirm + allow password sign-in
       if (error.message.toLowerCase().includes("already")) {
         await confirmUserEmail(email);
         return { created: false };
@@ -88,7 +92,7 @@ export async function createConfirmedUser(input: {
     return { created: true, userId: data.user.id };
   }
 
-  // Fallback without service role: public signup, then SQL confirm
+  // Public signup — DB trigger auto-confirms on insert when migration 005 is applied
   const { createClient } = await import("@supabase/supabase-js");
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -104,11 +108,14 @@ export async function createConfirmedUser(input: {
 
   if (error) throw error;
 
-  if (data.user) {
+  // Best-effort force-confirm when service role / DATABASE_URL is available
+  if (data.user && canForceConfirm()) {
     await confirmUserEmail(email, data.user.id);
-  } else {
-    await confirmUserEmail(email);
   }
 
-  return { created: true, userId: data.user?.id };
+  return {
+    created: true,
+    userId: data.user?.id,
+    session: Boolean(data.session),
+  };
 }
