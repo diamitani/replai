@@ -44,7 +44,6 @@ function LoginForm() {
       ? "Sign-in failed. Try again."
       : searchParams.get("error")
   );
-  const [message, setMessage] = useState<string | null>(null);
 
   const redirectTo = () => `${window.location.origin}/auth/callback`;
 
@@ -68,69 +67,91 @@ function LoginForm() {
     );
   };
 
+  const goToDashboard = async () => {
+    await ensureProfile();
+    window.location.assign("/chats");
+  };
+
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading("email");
     setError(null);
-    setMessage(null);
 
     const supabase = createClient();
 
-    if (mode === "signup") {
-      const { error: signUpError } = await supabase.auth.signUp({
+    try {
+      if (mode === "signup") {
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: redirectTo(),
+            data: {
+              full_name: email.split("@")[0],
+            },
+          },
+        });
+
+        if (signUpError) {
+          setError(signUpError.message);
+          return;
+        }
+
+        // Confirm email OFF → session comes back on signup
+        if (data.session) {
+          await goToDashboard();
+          return;
+        }
+
+        // Fallback: sign in with the same credentials right away
+        const { data: signInData, error: signInError } =
+          await supabase.auth.signInWithPassword({ email, password });
+
+        if (signInError) {
+          setError(
+            signInError.message.includes("Invalid login")
+              ? "That email may already be registered — switch to Sign in."
+              : signInError.message
+          );
+          setMode("signin");
+          return;
+        }
+
+        if (signInData.session) {
+          await goToDashboard();
+          return;
+        }
+
+        setError(
+          "No session after signup. In Supabase → Auth → Providers → Email, turn Confirm email OFF."
+        );
+        return;
+      }
+
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
-        options: {
-          emailRedirectTo: redirectTo(),
-          data: {
-            full_name: email.split("@")[0],
-          },
-        },
       });
 
+      if (signInError) {
+        setError(signInError.message);
+        return;
+      }
+
+      if (!data.session) {
+        setError("Sign-in succeeded but no session was created. Try again.");
+        return;
+      }
+
+      await goToDashboard();
+    } finally {
       setLoading(null);
-
-      if (signUpError) {
-        setError(signUpError.message);
-        return;
-      }
-
-      // With confirmations off, session is created immediately
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (session) {
-        await ensureProfile();
-        window.location.assign("/chats");
-        return;
-      }
-
-      setMessage("Account created. You can sign in now.");
-      setMode("signin");
-      return;
     }
-
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    setLoading(null);
-
-    if (signInError) {
-      setError(signInError.message);
-      return;
-    }
-
-    await ensureProfile();
-    window.location.assign("/chats");
   };
 
   const handleGoogle = async () => {
     setLoading("google");
     setError(null);
-    setMessage(null);
 
     const supabase = createClient();
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
@@ -169,7 +190,6 @@ function LoginForm() {
             onClick={() => {
               setMode("signin");
               setError(null);
-              setMessage(null);
             }}
             className={cn(
               "rounded-lg px-3 py-2 text-sm font-medium transition-colors",
@@ -185,7 +205,6 @@ function LoginForm() {
             onClick={() => {
               setMode("signup");
               setError(null);
-              setMessage(null);
             }}
             className={cn(
               "rounded-lg px-3 py-2 text-sm font-medium transition-colors",
@@ -260,7 +279,6 @@ function LoginForm() {
           </Button>
         </form>
 
-        {message && <p className="text-sm text-brand-600">{message}</p>}
         {error && <p className="text-sm text-red-600">{error}</p>}
       </CardContent>
     </Card>
