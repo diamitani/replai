@@ -223,22 +223,22 @@ export default function ChatsPage() {
   const showSearch = query.trim().length > 0;
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col bg-gradient-brand-subtle">
-      <header className="flex items-center justify-between border-b border-brand-100 bg-white/90 px-4 py-4 backdrop-blur">
+    <main className="mx-auto flex min-h-[100dvh] w-full max-w-lg flex-col bg-[#F2F4F8]">
+      <header className="ios-blur safe-top sticky top-0 z-20 flex items-center justify-between border-b border-black/[0.04] px-4 py-3">
         <div className="flex items-center gap-3">
           <Logo size="sm" href="/chats" />
           <div className="hidden sm:block">
-            <p className="text-sm font-semibold text-foreground">Messages</p>
-            <p className="text-xs text-muted-foreground">AI guardrails on</p>
+            <p className="text-[15px] font-semibold tracking-tight text-foreground">Messages</p>
+            <p className="text-[11px] text-muted-foreground">AI guardrails on</p>
           </div>
         </div>
         <Link href="/settings">
           <Button
             variant="outline"
             size="sm"
-            className="border-brand-200 text-brand-700 hover:bg-brand-50"
+            className="pressable rounded-full border-brand-100 text-brand-700 hover:bg-white"
           >
-            <Settings className="size-4" />
+            <Settings className="size-4" strokeWidth={1.75} />
             Settings
           </Button>
         </Link>
@@ -292,9 +292,11 @@ export default function ChatsPage() {
                     {displayLabel(invite.other_user)}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {invite.other_user.username
-                      ? `@${invite.other_user.username}`
-                      : "Wants to message you"}
+                    {invite.other_user.bio
+                      ? invite.other_user.bio
+                      : invite.other_user.username
+                        ? `@${invite.other_user.username}`
+                        : "Wants to message you"}
                   </p>
                 </div>
                 <Button
@@ -393,6 +395,11 @@ export default function ChatsPage() {
                             </span>
                           )}
                         </p>
+                        {user.bio && (
+                          <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                            {user.bio}
+                          </p>
+                        )}
                       </div>
                       {user.is_discoverable ? (
                         <Button
@@ -431,10 +438,10 @@ export default function ChatsPage() {
             <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-brand-100 text-brand-600">
               <MessageSquarePlus className="size-7" />
             </div>
-            <p className="text-lg font-semibold text-foreground">Start a conversation</p>
+            <p className="text-lg font-semibold text-foreground">Message the world</p>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Search for someone by name, or enter their @username. Claim your
-              own username in Settings so others can find you.
+              Search by name or @username. Add a short bio in Settings so people
+              know who they&apos;re about to message.
             </p>
           </div>
         ) : (

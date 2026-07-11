@@ -76,24 +76,25 @@ export function HeroChatDemo() {
   };
 
   return (
-    <div className="relative mx-auto w-full max-w-md">
-      <div className="absolute -inset-4 rounded-3xl bg-gradient-to-b from-brand-100/60 to-transparent blur-2xl" />
-      <div className="relative overflow-hidden rounded-3xl border border-brand-200/60 bg-white shadow-brand-lg">
+    <div className="w-full">
+      <div className="overflow-hidden bg-white">
         {/* Phone header */}
-        <div className="flex items-center justify-between border-b border-brand-100 bg-brand-50/50 px-4 py-3">
+        <div className="flex items-center justify-between border-b border-brand-100/80 bg-white/90 px-4 py-3">
           <div className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-full bg-gradient-brand text-sm font-semibold text-white">
+            <div className="flex size-9 items-center justify-center rounded-[22%] bg-gradient-brand text-sm font-semibold text-white shadow-sm">
               {scenario.contact.charAt(0)}
             </div>
             <div>
-              <p className="text-sm font-semibold text-foreground">{scenario.contact}</p>
-              <p className="text-xs text-brand-600">AI guardrails on</p>
+              <p className="text-[15px] font-semibold tracking-tight text-foreground">
+                {scenario.contact}
+              </p>
+              <p className="text-[11px] font-medium text-brand-600">AI guardrails on</p>
             </div>
           </div>
           <button
             type="button"
             onClick={reset}
-            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-brand-100 hover:text-brand-700"
+            className="pressable rounded-full p-2 text-muted-foreground transition-colors hover:bg-brand-50 hover:text-brand-700"
             aria-label="Reset demo"
           >
             <RotateCcw className="size-4" />
@@ -101,10 +102,10 @@ export function HeroChatDemo() {
         </div>
 
         {/* Messages */}
-        <div className="h-64 space-y-3 overflow-y-auto bg-gradient-to-b from-white to-brand-50/30 px-4 py-4">
+        <div className="h-64 space-y-2.5 overflow-y-auto bg-[#F2F4F8] px-3 py-4">
           {messages.length === 0 && phase === "idle" && (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              Type a message you&apos;re not sure about — then hit{" "}
+            <p className="px-4 py-10 text-center text-[13px] leading-relaxed text-muted-foreground">
+              Type a message you&apos;re not sure about — then tap{" "}
               <Sparkles className="inline size-3.5 text-brand-500" /> Check.
             </p>
           )}
@@ -112,17 +113,17 @@ export function HeroChatDemo() {
             <div key={msg.id} className={cn("flex", msg.isOwn ? "justify-end" : "justify-start")}>
               <div
                 className={cn(
-                  "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
+                  "max-w-[85%] px-3.5 py-2 text-[15px] leading-snug",
                   msg.isAi
-                    ? "rounded-bl-md border border-brand-200 bg-brand-50 text-brand-900"
+                    ? "rounded-[1.15rem] rounded-bl-md border border-brand-200/80 bg-white text-brand-900 shadow-sm"
                     : msg.isOwn
-                      ? "rounded-br-md bg-brand-500 text-white shadow-sm"
-                      : "rounded-bl-md bg-zinc-100 text-zinc-900"
+                      ? "rounded-[1.15rem] rounded-br-sm bg-[#0A84FF] text-white"
+                      : "rounded-[1.15rem] rounded-bl-sm bg-white text-zinc-900 shadow-sm"
                 )}
               >
                 {msg.isAi && (
-                  <p className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-brand-600">
-                    <Sparkles className="size-3" /> Replai says
+                  <p className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-brand-600">
+                    <Sparkles className="size-3" /> Replai
                   </p>
                 )}
                 <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -131,7 +132,7 @@ export function HeroChatDemo() {
           ))}
           {phase === "typing" && (
             <div className="flex justify-start">
-              <div className="flex items-center gap-2 rounded-2xl rounded-bl-md bg-brand-50 px-4 py-3 text-sm text-brand-600">
+              <div className="flex items-center gap-2 rounded-[1.15rem] rounded-bl-sm bg-white px-4 py-3 text-[13px] text-brand-600 shadow-sm">
                 <Loader2 className="size-4 animate-spin" />
                 Reading the room...
               </div>
@@ -139,13 +140,15 @@ export function HeroChatDemo() {
           )}
           {phase === "options" && (
             <div className="space-y-2 pt-1">
-              <p className="text-xs font-medium text-muted-foreground">Pick a rewrite:</p>
+              <p className="px-1 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                Pick a rewrite
+              </p>
               {scenario.options.map((option, i) => (
                 <button
                   key={i}
                   type="button"
                   onClick={() => sendOption(option)}
-                  className="w-full rounded-xl border border-brand-200 bg-white px-3 py-2.5 text-left text-sm leading-relaxed text-foreground transition-all hover:border-brand-400 hover:bg-brand-50 hover:shadow-sm"
+                  className="pressable w-full rounded-2xl border border-brand-100 bg-white px-3.5 py-2.5 text-left text-[14px] leading-relaxed text-foreground shadow-sm transition-colors hover:border-brand-300 hover:bg-brand-50/50"
                 >
                   {option}
                 </button>
@@ -153,23 +156,23 @@ export function HeroChatDemo() {
             </div>
           )}
           {phase === "sent" && (
-            <p className="text-center text-xs text-brand-600">
-              Sent. No regrets. That&apos;s the whole point.
+            <p className="text-center text-[12px] font-medium text-brand-600">
+              Sent. No regrets.
             </p>
           )}
           <div ref={bottomRef} />
         </div>
 
         {/* Compose */}
-        <div className="border-t border-brand-100 bg-white p-3">
-          <div className="flex gap-2">
+        <div className="border-t border-brand-100/80 bg-white p-3">
+          <div className="flex items-end gap-2">
             <textarea
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder="Write the text you're about to regret..."
               rows={2}
               disabled={phase === "typing"}
-              className="flex-1 resize-none rounded-xl border border-brand-200 bg-brand-50/30 px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-brand-400 focus:ring-2 focus:ring-brand-200"
+              className="flex-1 resize-none rounded-[1.25rem] border border-brand-100 bg-[#F2F4F8] px-3.5 py-2.5 text-[15px] outline-none transition-shadow placeholder:text-muted-foreground focus:border-brand-300 focus:ring-4 focus:ring-brand-100"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -180,7 +183,7 @@ export function HeroChatDemo() {
             <div className="flex flex-col gap-1.5">
               <Button
                 size="icon"
-                className="size-9 bg-brand-500 hover:bg-brand-600"
+                className="pressable size-10 rounded-full bg-[#0A84FF] hover:bg-brand-600"
                 onClick={() => void runAiCheck()}
                 disabled={!draft.trim() || phase === "typing"}
                 aria-label="AI check"
@@ -190,7 +193,7 @@ export function HeroChatDemo() {
               <Button
                 size="icon"
                 variant="outline"
-                className="size-9 border-brand-200"
+                className="size-10 rounded-full border-brand-100"
                 disabled
                 aria-label="Send"
               >
@@ -202,17 +205,17 @@ export function HeroChatDemo() {
       </div>
 
       {/* Scenario pills */}
-      <div className="mt-4 flex flex-wrap justify-center gap-2">
+      <div className="mt-5 flex flex-wrap justify-center gap-2">
         {DEMO_SCENARIOS.map((s) => (
           <button
             key={s.id}
             type="button"
             onClick={() => loadScenario(s)}
             className={cn(
-              "rounded-full px-3 py-1 text-xs font-medium transition-all",
+              "pressable rounded-full px-3.5 py-1.5 text-[12px] font-medium transition-all duration-300 ease-spring",
               activeScenarioId === s.id
-                ? "bg-brand-600 text-white shadow-sm"
-                : "bg-white text-brand-700 ring-1 ring-brand-200 hover:bg-brand-50"
+                ? "bg-brand-600 text-white shadow-brand"
+                : "bg-white/80 text-brand-700 ring-1 ring-brand-200/80 hover:bg-brand-50"
             )}
           >
             {s.label}

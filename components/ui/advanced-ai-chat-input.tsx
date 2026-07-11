@@ -39,7 +39,7 @@ export function AdvancedAiChatInput({
   };
 
   return (
-    <div className={cn("border-t border-brand-100 bg-white px-4 py-3", className)}>
+    <div className={cn("border-t border-brand-100/80 bg-white/90 px-3 py-2.5 safe-bottom backdrop-blur-xl", className)}>
       <div className="flex items-end gap-2">
         <Textarea
           value={draft}
@@ -47,7 +47,7 @@ export function AdvancedAiChatInput({
           placeholder={placeholder}
           disabled={disabled}
           rows={1}
-          className="min-h-[44px] max-h-32 resize-none rounded-2xl border-brand-200 bg-brand-50/40"
+          className="min-h-[44px] max-h-32 resize-none rounded-[1.25rem] border-brand-100 bg-[#F2F4F8] px-3.5 text-[15px]"
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
@@ -60,7 +60,7 @@ export function AdvancedAiChatInput({
             type="button"
             variant="outline"
             size="icon"
-            className="h-11 w-11 shrink-0 rounded-full border-brand-200 text-brand-600 hover:bg-brand-50"
+            className="pressable h-11 w-11 shrink-0 rounded-full border-brand-100 text-brand-600 hover:bg-brand-50"
             onClick={() => void handleAiCheck()}
             disabled={disabled || aiLoading || !draft.trim()}
             aria-label="AI check"
@@ -75,7 +75,7 @@ export function AdvancedAiChatInput({
         <Button
           type="button"
           size="icon"
-          className="h-11 w-11 shrink-0 rounded-full bg-brand-500 hover:bg-brand-600"
+          className="pressable h-11 w-11 shrink-0 rounded-full bg-[#0A84FF] hover:bg-brand-600"
           onClick={() => void handleSend()}
           disabled={disabled || !draft.trim()}
           aria-label="Send message"

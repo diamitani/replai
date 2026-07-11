@@ -7,11 +7,11 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { buildContactRules } from "@/lib/conversations";
 import { createClient } from "@/lib/supabase/client";
-import type { Contact, Message } from "@/lib/types";
+import type { Contact, Message, PrivateDraft } from "@/lib/types";
 import { ChevronLeft, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export default function ChatThreadPage() {
   const params = useParams<{ id: string }>();
@@ -21,6 +21,11 @@ export default function ChatThreadPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [recipientName, setRecipientName] = useState<string>("Contact");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [draftsByMessageId, setDraftsByMessageId] = useState<
+    Record<string, string>
+  >({});
+  const draftsRef = useRef(draftsByMessageId);
+  draftsRef.current = draftsByMessageId;
   const [contact, setContact] = useState<Contact | null>(null);
   const [loading, setLoading] = useState(true);
   const [aiLoading, setAiLoading] = useState(false);
@@ -30,15 +35,34 @@ export default function ChatThreadPage() {
   const [error, setError] = useState<string | null>(null);
 
   const mapMessage = useCallback(
-    (message: Message, userId: string): ChatMessage => ({
+    (
+      message: Message,
+      userId: string,
+      originals: Record<string, string> = {}
+    ): ChatMessage => ({
       id: message.id,
       content: message.content,
       senderId: message.sender_id,
       createdAt: message.created_at,
       isOwn: message.sender_id === userId,
+      aiWasRewritten: message.ai_was_rewritten,
+      originalDraft: originals[message.id] ?? null,
     }),
     []
   );
+
+  const loadDrafts = useCallback(async () => {
+    const response = await fetch(`/api/conversations/${conversationId}/drafts`);
+    if (!response.ok) return {};
+
+    const data = await response.json();
+    const map: Record<string, string> = {};
+    for (const draft of (data.drafts ?? []) as PrivateDraft[]) {
+      map[draft.message_id] = draft.original_text;
+    }
+    setDraftsByMessageId(map);
+    return map;
+  }, [conversationId]);
 
   const loadThread = useCallback(async () => {
     setLoading(true);
@@ -71,7 +95,12 @@ export default function ChatThreadPage() {
     const otherUserId =
       conversation.user_a === user.id ? conversation.user_b : conversation.user_a;
 
-    const [{ data: otherUser }, { data: messageRows }, contactResponse] = await Promise.all([
+    const [
+      { data: otherUser },
+      { data: messageRows },
+      contactResponse,
+      originals,
+    ] = await Promise.all([
       supabase
         .from("users")
         .select("id, email, display_name, username")
@@ -83,6 +112,7 @@ export default function ChatThreadPage() {
         .eq("conversation_id", conversationId)
         .order("created_at", { ascending: true }),
       fetch(`/api/contacts/${conversationId}`),
+      loadDrafts(),
     ]);
 
     if (otherUser) {
@@ -93,7 +123,9 @@ export default function ChatThreadPage() {
     }
 
     if (messageRows) {
-      setMessages(messageRows.map((message) => mapMessage(message, user.id)));
+      setMessages(
+        messageRows.map((message) => mapMessage(message, user.id, originals))
+      );
     }
 
     if (contactResponse.ok) {
@@ -102,11 +134,22 @@ export default function ChatThreadPage() {
     }
 
     setLoading(false);
-  }, [conversationId, mapMessage, supabase]);
+  }, [conversationId, loadDrafts, mapMessage, supabase]);
 
   useEffect(() => {
     void loadThread();
   }, [loadThread]);
+
+  // When the private vault updates (own send or newly shared), stitch onto bubbles.
+  useEffect(() => {
+    if (!currentUserId || Object.keys(draftsByMessageId).length === 0) return;
+    setMessages((prev) =>
+      prev.map((m) => ({
+        ...m,
+        originalDraft: draftsByMessageId[m.id] ?? m.originalDraft ?? null,
+      }))
+    );
+  }, [currentUserId, draftsByMessageId]);
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -127,8 +170,15 @@ export default function ChatThreadPage() {
             if (prev.some((message) => message.id === newMessage.id)) {
               return prev;
             }
-            return [...prev, mapMessage(newMessage, currentUserId)];
+            return [
+              ...prev,
+              mapMessage(newMessage, currentUserId, draftsRef.current),
+            ];
           });
+          // Refresh vault for own drafts or newly shared ones.
+          if (newMessage.ai_was_rewritten) {
+            void loadDrafts();
+          }
         }
       )
       .subscribe();
@@ -136,7 +186,7 @@ export default function ChatThreadPage() {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [conversationId, currentUserId, mapMessage, supabase]);
+  }, [conversationId, currentUserId, loadDrafts, mapMessage, supabase]);
 
   const sendMessage = async (
     content: string,
@@ -162,11 +212,25 @@ export default function ChatThreadPage() {
     }
 
     if (currentUserId) {
+      const originals = { ...draftsByMessageId };
+
+      // Optimistic: stitch original onto this message before vault round-trip.
+      if (aiWasRewritten && aiOriginalDraftValue) {
+        originals[data.message.id] = aiOriginalDraftValue;
+        setDraftsByMessageId(originals);
+      } else if (aiWasRewritten) {
+        void loadDrafts();
+      }
+
       setMessages((prev) => {
         if (prev.some((message) => message.id === data.message.id)) {
-          return prev;
+          return prev.map((message) =>
+            message.id === data.message.id
+              ? mapMessage(data.message, currentUserId, originals)
+              : message
+          );
         }
-        return [...prev, mapMessage(data.message, currentUserId)];
+        return [...prev, mapMessage(data.message, currentUserId, originals)];
       });
     }
   };
@@ -229,26 +293,26 @@ export default function ChatThreadPage() {
   }
 
   return (
-    <main className="mx-auto flex h-dvh w-full max-w-lg flex-col bg-white">
-      <header className="flex items-center justify-between border-b border-brand-100 bg-white/95 px-3 py-3 backdrop-blur">
+    <main className="mx-auto flex h-dvh w-full max-w-lg flex-col bg-[#F2F4F8]">
+      <header className="ios-blur safe-top sticky top-0 z-20 flex items-center justify-between border-b border-black/[0.04] px-3 py-2.5">
         <div className="flex min-w-0 items-center gap-2">
           <Link
             href="/chats"
-            className="flex size-9 shrink-0 items-center justify-center rounded-full text-brand-600 transition-colors hover:bg-brand-50"
+            className="pressable flex size-9 shrink-0 items-center justify-center rounded-full text-[#0A84FF] transition-colors hover:bg-white/80"
             aria-label="Back to messages"
           >
-            <ChevronLeft className="size-5" />
+            <ChevronLeft className="size-6" strokeWidth={1.75} />
           </Link>
-          <Avatar className="size-9 shrink-0 ring-2 ring-brand-100">
-            <AvatarFallback className="bg-gradient-brand text-xs font-semibold text-white">
+          <Avatar className="size-9 shrink-0">
+            <AvatarFallback className="rounded-[22%] bg-gradient-brand text-xs font-semibold text-white">
               {recipientName.slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0">
-            <h1 className="truncate text-base font-semibold text-foreground">
+            <h1 className="truncate text-[15px] font-semibold tracking-tight text-foreground">
               {recipientName}
             </h1>
-            <p className="text-[11px] text-brand-600">AI guardrails on</p>
+            <p className="text-[11px] font-medium text-brand-600">AI guardrails on</p>
           </div>
         </div>
         <Link href={`/chats/${conversationId}/profile`}>

@@ -3,6 +3,7 @@ export type User = {
   email: string;
   display_name: string | null;
   username: string | null;
+  bio: string | null;
   is_discoverable: boolean;
   created_at: string;
 };
@@ -12,6 +13,7 @@ export type PublicUser = {
   username: string | null;
   display_name: string | null;
   is_discoverable: boolean;
+  bio: string | null;
 };
 
 export type UserSearchResult = PublicUser & {
@@ -57,8 +59,32 @@ export type Message = {
   conversation_id: string;
   sender_id: string;
   content: string;
+  /** @deprecated Kept for schema compat; always null. Use PrivateDraft. */
   ai_original_draft: string | null;
   ai_was_rewritten: boolean;
+  created_at: string;
+};
+
+/** Sender-only original text. Visible to others only via DraftShare. */
+export type PrivateDraft = {
+  id: string;
+  message_id: string;
+  conversation_id: string;
+  owner_id: string;
+  original_text: string;
+  created_at: string;
+};
+
+export type PrivateDraftWithSent = PrivateDraft & {
+  sent_content: string;
+  sent_at: string;
+};
+
+export type DraftShare = {
+  id: string;
+  conversation_id: string;
+  owner_id: string;
+  viewer_id: string;
   created_at: string;
 };
 

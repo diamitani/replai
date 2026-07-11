@@ -1,0 +1,20 @@
+---
+description: Apply Replai taste-skill design system on all UI work
+globs: app/**/*.{tsx,css},components/**/*.{tsx,css}
+alwaysApply: false
+---
+
+# Replai UI — taste-skill
+
+Before changing any visual UI, read `DESIGN.md` and follow `.cursor/skills/design-taste-frontend`.
+
+**Design read (locked):** premium consumer messaging PWA, Soft Structuralism, white + blue, Apple-y iOS bridge.
+
+## Must follow
+- Outfit + Geist Mono only (no Inter)
+- Brand blue accent only — no purple gradients
+- `min-h-[100dvh]`, safe-area utilities on app chrome
+- Motion: spring / `cubic-bezier(0.32, 0.72, 0, 1)`, transform+opacity only
+- Floating island nav on marketing; iMessage chrome in chat
+- Double-bezel phone mockups; squircle avatars
+- Sentence case headlines; no AI copy clichés (elevate, unleash, seamless…)

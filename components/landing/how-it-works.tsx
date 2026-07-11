@@ -26,38 +26,43 @@ const steps = [
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="bg-white py-20 sm:py-28">
+    <section id="how-it-works" className="bg-white py-28 sm:py-36">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-wider text-brand-600">
+          <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-brand-600">
             How it works
           </p>
-          <h2 className="mt-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+          <h2 className="mt-4 text-3xl font-semibold tracking-[-0.03em] text-foreground sm:text-5xl">
             A pause button for your thumbs
           </h2>
-          <p className="mt-4 text-lg text-muted-foreground">
-            Not a filter that blocks you. Not a robot that sounds like a LinkedIn post.
-            A co-pilot that knows the difference between &ldquo;I&apos;m frustrated&rdquo; and
-            &ldquo;I&apos;m about to start a group chat war.&rdquo;
+          <p className="mx-auto mt-5 max-w-[42ch] text-lg leading-relaxed text-muted-foreground">
+            Not a filter that blocks you. A co-pilot that knows the difference between
+            frustrated and starting a group-chat war.
           </p>
         </div>
 
-        <div className="mt-16 grid gap-8 md:grid-cols-3">
+        <div className="mt-20 grid gap-5 md:grid-cols-3">
           {steps.map((item) => (
             <div
               key={item.step}
-              className="group relative rounded-2xl border border-brand-100 bg-gradient-to-b from-white to-brand-50/30 p-6 transition-shadow hover:shadow-brand"
+              className="group relative rounded-[1.75rem] bg-brand-50/50 p-1.5 transition-shadow duration-500 ease-spring hover:shadow-brand"
             >
-              <div className="mb-4 flex items-center justify-between">
-                <div className="flex size-11 items-center justify-center rounded-xl bg-brand-100 text-brand-600 transition-colors group-hover:bg-brand-600 group-hover:text-white">
-                  <item.icon className="size-5" />
+              <div className="h-full rounded-[calc(1.75rem-0.25rem)] bg-white p-6 ring-1 ring-brand-100/60">
+                <div className="mb-5 flex items-center justify-between">
+                  <div className="flex size-11 items-center justify-center rounded-2xl bg-brand-100 text-brand-600 transition-colors duration-300 group-hover:bg-brand-600 group-hover:text-white">
+                    <item.icon className="size-5" strokeWidth={1.75} />
+                  </div>
+                  <span className="text-2xl font-semibold tracking-tight text-brand-100">
+                    {item.step}
+                  </span>
                 </div>
-                <span className="text-3xl font-bold text-brand-100">{item.step}</span>
+                <h3 className="text-lg font-semibold tracking-tight text-foreground">
+                  {item.title}
+                </h3>
+                <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
+                  {item.description}
+                </p>
               </div>
-              <h3 className="text-lg font-semibold text-foreground">{item.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                {item.description}
-              </p>
             </div>
           ))}
         </div>

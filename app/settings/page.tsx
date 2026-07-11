@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import type { User } from "@/lib/types";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
@@ -24,12 +25,15 @@ type UsageReport = {
   recentRequests: number;
 };
 
+const BIO_MAX = 160;
+
 export default function SettingsPage() {
   const router = useRouter();
   const [email, setEmail] = useState<string | null>(null);
   const [profile, setProfile] = useState<User | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
+  const [bio, setBio] = useState("");
   const [isDiscoverable, setIsDiscoverable] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -56,6 +60,7 @@ export default function SettingsPage() {
         setProfile(p);
         setDisplayName(p.display_name ?? "");
         setUsername(p.username ?? "");
+        setBio(p.bio ?? "");
         setIsDiscoverable(p.is_discoverable ?? true);
       }
 
@@ -80,6 +85,7 @@ export default function SettingsPage() {
       body: JSON.stringify({
         display_name: displayName,
         username: username.trim() === "" ? null : username,
+        bio: bio.trim() === "" ? null : bio,
         is_discoverable: isDiscoverable,
       }),
     });
@@ -94,6 +100,7 @@ export default function SettingsPage() {
     setProfile(data.profile);
     setUsername(data.profile.username ?? "");
     setDisplayName(data.profile.display_name ?? "");
+    setBio(data.profile.bio ?? "");
     setIsDiscoverable(data.profile.is_discoverable);
     setProfileSaved(true);
   };
@@ -167,6 +174,23 @@ export default function SettingsPage() {
               <p className="text-xs text-muted-foreground">
                 3–30 characters. Letters, numbers, underscores. Others can find
                 you with @{username || "username"} even if you&apos;re private.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="bio" className="text-sm font-medium">
+                Bio
+              </label>
+              <Textarea
+                id="bio"
+                value={bio}
+                onChange={(e) => setBio(e.target.value.slice(0, BIO_MAX))}
+                placeholder="A short line for people who want to message you"
+                className="min-h-20 border-brand-200"
+                maxLength={BIO_MAX}
+              />
+              <p className="text-xs text-muted-foreground">
+                Shown in search before someone hits Message. {bio.length}/{BIO_MAX}
               </p>
             </div>
 

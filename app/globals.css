@@ -7,9 +7,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -56,45 +56,46 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 :root {
-  /* Replai brand — white & blue */
-  --brand-50: oklch(0.97 0.02 250);
-  --brand-100: oklch(0.94 0.04 250);
-  --brand-200: oklch(0.88 0.08 250);
-  --brand-300: oklch(0.78 0.14 252);
-  --brand-400: oklch(0.65 0.2 255);
-  --brand-500: oklch(0.55 0.24 258);
-  --brand-600: oklch(0.48 0.24 260);
-  --brand-700: oklch(0.4 0.2 262);
-  --brand-800: oklch(0.32 0.16 264);
-  --brand-900: oklch(0.24 0.12 266);
+  /* Soft Structuralism — white + restrained electric blue */
+  --brand-50: oklch(0.975 0.012 250);
+  --brand-100: oklch(0.95 0.03 250);
+  --brand-200: oklch(0.9 0.06 252);
+  --brand-300: oklch(0.8 0.11 254);
+  --brand-400: oklch(0.68 0.16 256);
+  --brand-500: oklch(0.58 0.19 258);
+  --brand-600: oklch(0.5 0.2 260);
+  --brand-700: oklch(0.42 0.17 262);
+  --brand-800: oklch(0.34 0.13 264);
+  --brand-900: oklch(0.26 0.09 266);
 
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.18 0.02 260);
+  --background: oklch(0.995 0.002 250);
+  --foreground: oklch(0.2 0.02 260);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.02 260);
+  --card-foreground: oklch(0.2 0.02 260);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.02 260);
+  --popover-foreground: oklch(0.2 0.02 260);
   --primary: var(--brand-600);
   --primary-foreground: oklch(0.99 0 0);
   --secondary: var(--brand-50);
   --secondary-foreground: var(--brand-800);
-  --muted: oklch(0.97 0.01 250);
-  --muted-foreground: oklch(0.5 0.03 260);
+  --muted: oklch(0.97 0.008 250);
+  --muted-foreground: oklch(0.48 0.03 260);
   --accent: var(--brand-50);
   --accent-foreground: var(--brand-700);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.92 0.02 250);
-  --input: oklch(0.92 0.02 250);
+  --border: oklch(0.93 0.015 250);
+  --input: oklch(0.93 0.015 250);
   --ring: var(--brand-400);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  --radius: 1rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -145,30 +146,86 @@
   }
   body {
     @apply bg-background text-foreground;
+    -webkit-tap-highlight-color: transparent;
+    text-rendering: optimizeLegibility;
   }
   html {
     @apply font-sans scroll-smooth;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
   }
 }
 
 @layer utilities {
   .text-gradient-brand {
-    @apply bg-gradient-to-r from-brand-600 to-brand-400 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-brand-700 to-brand-400 bg-clip-text text-transparent;
   }
   .bg-gradient-brand {
     @apply bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400;
   }
   .bg-gradient-brand-subtle {
-    @apply bg-gradient-to-b from-brand-50/80 via-white to-white;
+    background:
+      radial-gradient(ellipse 80% 50% at 70% -10%, oklch(0.9 0.06 252 / 0.55), transparent),
+      radial-gradient(ellipse 60% 40% at 10% 20%, oklch(0.95 0.03 250 / 0.7), transparent),
+      linear-gradient(to bottom, oklch(0.985 0.01 250), white 55%);
   }
   .shadow-brand {
     box-shadow:
-      0 1px 2px oklch(0.55 0.24 258 / 0.06),
-      0 8px 24px oklch(0.55 0.24 258 / 0.1);
+      0 1px 2px oklch(0.5 0.2 260 / 0.05),
+      0 10px 28px oklch(0.5 0.2 260 / 0.08);
   }
   .shadow-brand-lg {
     box-shadow:
-      0 2px 4px oklch(0.55 0.24 258 / 0.06),
-      0 16px 48px oklch(0.55 0.24 258 / 0.14);
+      0 2px 4px oklch(0.5 0.2 260 / 0.04),
+      0 24px 56px oklch(0.5 0.2 260 / 0.12);
+  }
+  .ease-spring {
+    transition-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-x {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  .ios-blur {
+    @apply bg-white/72 backdrop-blur-2xl;
+  }
+  .bezel {
+    border-radius: 2rem;
+    border: 1px solid oklch(0.9 0.06 252 / 0.8);
+    background: oklch(0.975 0.012 250 / 0.4);
+    padding: 0.375rem;
+    box-shadow:
+      0 1px 2px oklch(0.5 0.2 260 / 0.05),
+      0 10px 28px oklch(0.5 0.2 260 / 0.08);
+  }
+  .bezel-inner {
+    @apply overflow-hidden rounded-[calc(2rem-0.375rem)] bg-white;
+  }
+  .pressable {
+    @apply transition-transform duration-200 ease-spring active:scale-[0.98];
+  }
+  .grain {
+    position: relative;
+  }
+  .grain::after {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 }

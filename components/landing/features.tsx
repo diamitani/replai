@@ -35,16 +35,16 @@ const features = [
 
 export function Features() {
   return (
-    <section id="features" className="bg-white py-20 sm:py-28">
+    <section id="features" className="bg-white py-28 sm:py-36">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-wider text-brand-600">
+          <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-brand-600">
             Features
           </p>
-          <h2 className="mt-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+          <h2 className="mt-4 text-3xl font-semibold tracking-[-0.03em] text-foreground sm:text-5xl">
             Built for humans who overthink
           </h2>
-          <p className="mt-4 text-lg text-muted-foreground">
+          <p className="mt-5 text-lg leading-relaxed text-muted-foreground">
             Everything you need to send the right message — without losing what you
             actually wanted to say.
           </p>

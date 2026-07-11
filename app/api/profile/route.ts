@@ -14,7 +14,7 @@ export async function GET() {
 
   const { data: profile, error } = await supabase
     .from("users")
-    .select("id, email, display_name, username, is_discoverable, created_at")
+    .select("id, email, display_name, username, bio, is_discoverable, created_at")
     .eq("id", user.id)
     .single();
 
@@ -42,6 +42,7 @@ export async function PATCH(request: Request) {
   const updates: {
     display_name?: string | null;
     username?: string | null;
+    bio?: string | null;
     is_discoverable?: boolean;
   } = {};
 
@@ -69,6 +70,17 @@ export async function PATCH(request: Request) {
     }
   }
 
+  if ("bio" in body) {
+    if (body.bio === null || body.bio === "") {
+      updates.bio = null;
+    } else if (typeof body.bio === "string") {
+      const bio = body.bio.trim().slice(0, 160);
+      updates.bio = bio.length > 0 ? bio : null;
+    } else {
+      return NextResponse.json({ error: "bio must be a string" }, { status: 400 });
+    }
+  }
+
   if ("is_discoverable" in body) {
     if (typeof body.is_discoverable !== "boolean") {
       return NextResponse.json(
@@ -87,7 +99,7 @@ export async function PATCH(request: Request) {
     .from("users")
     .update(updates)
     .eq("id", user.id)
-    .select("id, email, display_name, username, is_discoverable, created_at")
+    .select("id, email, display_name, username, bio, is_discoverable, created_at")
     .single();
 
   if (error) {
