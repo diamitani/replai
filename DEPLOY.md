@@ -1,40 +1,48 @@
 # Deploy to Vercel
 
-## 1. Prerequisites
+See also: `AUTH.md` (URLs + auth checklist), `SUPABASE_SETUP.md` (migrations).
 
-- Run Supabase migration (see `SUPABASE_SETUP.md`)
-- Add `OPENROUTER_API_KEY` to `.env.local`
-- Push repo to GitHub
+## Live
 
-## 2. Vercel project
+| | |
+|---|---|
+| Production | https://replai-psi.vercel.app |
+| Login | https://replai-psi.vercel.app/login |
+| GitHub | https://github.com/diamitani/replai |
+| Vercel | artispreneur/replai |
 
-1. Go to [vercel.com/new](https://vercel.com/new)
-2. Import the `replaimsg` repo
-3. Root directory: `replaimsg` (if repo root is `Replai`) or `.` if repo is just replaimsg
-4. Add environment variables:
+## Env vars (Vercel → Settings → Environment Variables)
 
 | Variable | Value |
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://potuzocstvlrlmlrneid.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | your publishable/anon key |
-| `DEEPSEEK_API_KEY` | your DeepSeek API key |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | from Supabase → Settings → API |
+| `SUPABASE_PROJECT_REF` | `potuzocstvlrlmlrneid` |
+| `DEEPSEEK_API_KEY` | from platform.deepseek.com |
 | `LLM_MODEL` | `deepseek-chat` |
 | `DEEPSEEK_LOW_BALANCE_USD` | `5` |
-| `NEXT_PUBLIC_APP_URL` | your Vercel URL |
+| `NEXT_PUBLIC_APP_URL` | `https://replai-psi.vercel.app` |
 
-5. Deploy
+## Post-deploy auth
 
-## 3. Post-deploy
+1. Supabase → URL Configuration
+   - Site URL: `https://replai-psi.vercel.app`
+   - Redirect: `https://replai-psi.vercel.app/auth/callback`
+2. Email provider: **Confirm email OFF**
+3. Google provider: enable + Client ID/Secret
+4. Google Cloud redirect URI: `https://potuzocstvlrlmlrneid.supabase.co/auth/v1/callback`
 
-1. Add Vercel URL to Supabase Auth redirect URLs: `https://YOUR_APP.vercel.app/auth/callback`
-2. On iPhone: open the URL in Safari → Share → Add to Home Screen
+## Redeploy
 
-## 4. E2E test checklist
+```bash
+cd replaimsg
+vercel deploy --prod --yes
+```
 
-- [ ] Sign up user A with magic link
-- [ ] Sign up user B in another browser/incognito
-- [ ] User A starts chat with user B's email
-- [ ] Send plain message — appears in B's window within ~1s
-- [ ] Set contact rules on profile page
-- [ ] Draft message → AI check → pick option → sends
-- [ ] Rules visibly change rewrite tone
+## E2E checklist
+
+- [ ] Sign up with email/password (or Google)
+- [ ] Second user in another browser
+- [ ] Start chat by email/username
+- [ ] Send message — appears in realtime
+- [ ] Set contact rules → AI rewrite uses them

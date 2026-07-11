@@ -1,15 +1,17 @@
 # Supabase setup
 
+Full auth URL checklist: **`AUTH.md`**
+
 ## 1. Run migration
 
-Open [Supabase SQL Editor](https://supabase.com/dashboard/project/potuzocstvlrlmlrneid/sql/new) and paste the full contents of:
-
-Run both migrations in Supabase Dashboard → SQL Editor:
+Open [Supabase SQL Editor](https://supabase.com/dashboard/project/potuzocstvlrlmlrneid/sql/new) and paste the full contents of each file, in order:
 
 1. `supabase/migrations/001_initial_schema.sql`
 2. `supabase/migrations/002_llm_usage.sql` (DeepSeek usage tracking)
+3. `supabase/migrations/003_user_discovery.sql` (usernames + invites)
+4. `supabase/migrations/004_private_drafts.sql` (private original drafts + share access)
 
-Click **Run**.
+Click **Run** after each.
 
 ## 2. Auth (email + Google OAuth)
 
