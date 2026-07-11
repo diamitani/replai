@@ -72,78 +72,77 @@ function LoginForm() {
     window.location.assign("/chats");
   };
 
+  const signInAndGo = async () => {
+    const supabase = createClient();
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    });
+
+    if (signInError) {
+      const notConfirmed =
+        signInError.message.toLowerCase().includes("not confirmed") ||
+        signInError.code === "email_not_confirmed";
+
+      if (notConfirmed) {
+        const confirmRes = await fetch("/api/auth/confirm-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+        });
+        const confirmData = await confirmRes.json();
+        if (!confirmRes.ok) {
+          throw new Error(confirmData.error ?? "Could not confirm email");
+        }
+
+        const retry = await supabase.auth.signInWithPassword({
+          email: email.trim().toLowerCase(),
+          password,
+        });
+        if (retry.error || !retry.data.session) {
+          throw new Error(retry.error?.message ?? "Sign-in failed after confirm");
+        }
+        await goToDashboard();
+        return;
+      }
+
+      throw new Error(signInError.message);
+    }
+
+    if (!data.session) {
+      throw new Error("Sign-in succeeded but no session was created.");
+    }
+
+    await goToDashboard();
+  };
+
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading("email");
     setError(null);
 
-    const supabase = createClient();
-
     try {
       if (mode === "signup") {
-        const { data, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: redirectTo(),
-            data: {
-              full_name: email.split("@")[0],
-            },
-          },
+        const response = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: email.trim().toLowerCase(),
+            password,
+            fullName: email.split("@")[0],
+          }),
         });
+        const data = await response.json();
 
-        if (signUpError) {
-          setError(signUpError.message);
-          return;
+        // 409 = already registered — still try sign-in / confirm
+        if (!response.ok && response.status !== 409) {
+          throw new Error(data.error ?? "Signup failed");
         }
-
-        // Confirm email OFF → session comes back on signup
-        if (data.session) {
-          await goToDashboard();
-          return;
-        }
-
-        // Fallback: sign in with the same credentials right away
-        const { data: signInData, error: signInError } =
-          await supabase.auth.signInWithPassword({ email, password });
-
-        if (signInError) {
-          setError(
-            signInError.message.includes("Invalid login")
-              ? "That email may already be registered — switch to Sign in."
-              : signInError.message
-          );
-          setMode("signin");
-          return;
-        }
-
-        if (signInData.session) {
-          await goToDashboard();
-          return;
-        }
-
-        setError(
-          "No session after signup. In Supabase → Auth → Providers → Email, turn Confirm email OFF."
-        );
-        return;
       }
 
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (signInError) {
-        setError(signInError.message);
-        return;
-      }
-
-      if (!data.session) {
-        setError("Sign-in succeeded but no session was created. Try again.");
-        return;
-      }
-
-      await goToDashboard();
+      await signInAndGo();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(null);
     }
