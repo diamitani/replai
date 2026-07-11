@@ -72,7 +72,11 @@ export default function ChatThreadPage() {
       conversation.user_a === user.id ? conversation.user_b : conversation.user_a;
 
     const [{ data: otherUser }, { data: messageRows }, contactResponse] = await Promise.all([
-      supabase.from("users").select("id, email, display_name").eq("id", otherUserId).single(),
+      supabase
+        .from("users")
+        .select("id, email, display_name, username")
+        .eq("id", otherUserId)
+        .single(),
       supabase
         .from("messages")
         .select("*")
@@ -82,7 +86,10 @@ export default function ChatThreadPage() {
     ]);
 
     if (otherUser) {
-      setRecipientName(otherUser.display_name ?? otherUser.email);
+      const label =
+        otherUser.display_name ??
+        (otherUser.username ? `@${otherUser.username}` : otherUser.email);
+      setRecipientName(label);
     }
 
     if (messageRows) {

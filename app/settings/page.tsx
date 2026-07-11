@@ -4,6 +4,8 @@ import { Logo } from "@/components/brand/logo";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import type { User } from "@/lib/types";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -25,6 +27,13 @@ type UsageReport = {
 export default function SettingsPage() {
   const router = useRouter();
   const [email, setEmail] = useState<string | null>(null);
+  const [profile, setProfile] = useState<User | null>(null);
+  const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
+  const [isDiscoverable, setIsDiscoverable] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileSaved, setProfileSaved] = useState(false);
   const [usage, setUsage] = useState<UsageReport | null>(null);
   const [usageLoading, setUsageLoading] = useState(true);
 
@@ -36,15 +45,58 @@ export default function SettingsPage() {
       } = await supabase.auth.getUser();
       setEmail(user?.email ?? null);
 
-      const response = await fetch("/api/llm/usage");
-      if (response.ok) {
-        setUsage(await response.json());
+      const [profileRes, usageRes] = await Promise.all([
+        fetch("/api/profile"),
+        fetch("/api/llm/usage"),
+      ]);
+
+      if (profileRes.ok) {
+        const data = await profileRes.json();
+        const p = data.profile as User;
+        setProfile(p);
+        setDisplayName(p.display_name ?? "");
+        setUsername(p.username ?? "");
+        setIsDiscoverable(p.is_discoverable ?? true);
+      }
+
+      if (usageRes.ok) {
+        setUsage(await usageRes.json());
       }
       setUsageLoading(false);
     };
 
     void load();
   }, []);
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setProfileError(null);
+    setProfileSaved(false);
+
+    const response = await fetch("/api/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        display_name: displayName,
+        username: username.trim() === "" ? null : username,
+        is_discoverable: isDiscoverable,
+      }),
+    });
+    const data = await response.json();
+    setSaving(false);
+
+    if (!response.ok) {
+      setProfileError(data.error ?? "Failed to save profile");
+      return;
+    }
+
+    setProfile(data.profile);
+    setUsername(data.profile.username ?? "");
+    setDisplayName(data.profile.display_name ?? "");
+    setIsDiscoverable(data.profile.is_discoverable);
+    setProfileSaved(true);
+  };
 
   const handleSignOut = async () => {
     const supabase = createClient();
@@ -67,13 +119,106 @@ export default function SettingsPage() {
 
       <Card className="border-brand-100 shadow-brand">
         <CardHeader>
-          <CardTitle>Settings</CardTitle>
+          <CardTitle>Profile</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <p className="text-sm text-muted-foreground">Signed in as</p>
-            <p className="font-medium text-foreground">{email ?? "..."}</p>
-          </div>
+        <CardContent>
+          <form onSubmit={(e) => void handleSaveProfile(e)} className="space-y-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Signed in as</p>
+              <p className="font-medium text-foreground">{email ?? "..."}</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="displayName" className="text-sm font-medium">
+                Display name
+              </label>
+              <Input
+                id="displayName"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="How you appear in chats"
+                className="border-brand-200"
+                maxLength={80}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="username" className="text-sm font-medium">
+                Username
+              </label>
+              <div className="relative">
+                <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground">
+                  @
+                </span>
+                <Input
+                  id="username"
+                  value={username}
+                  onChange={(e) =>
+                    setUsername(
+                      e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "")
+                    )
+                  }
+                  placeholder="yourname"
+                  className="border-brand-200 pl-7"
+                  maxLength={30}
+                  autoComplete="username"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                3–30 characters. Letters, numbers, underscores. Others can find
+                you with @{username || "username"} even if you&apos;re private.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-brand-100 bg-brand-50/50 p-3">
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={isDiscoverable}
+                  onChange={(e) => setIsDiscoverable(e.target.checked)}
+                  className="mt-1 size-4 rounded border-brand-300 text-brand-600 focus:ring-brand-500"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-foreground">
+                    Open to search
+                  </span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    {isDiscoverable
+                      ? "People can find you by display name in search."
+                      : "Private — only exact @username or an invite can reach you."}
+                  </span>
+                </span>
+              </label>
+            </div>
+
+            {profileError && (
+              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+                {profileError}
+              </p>
+            )}
+            {profileSaved && (
+              <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                Profile saved
+                {profile?.username ? ` — share @${profile.username}` : ""}.
+              </p>
+            )}
+
+            <Button
+              type="submit"
+              disabled={saving}
+              className="bg-brand-600 hover:bg-brand-700"
+            >
+              {saving ? "Saving..." : "Save profile"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4 border-brand-100 shadow-brand">
+        <CardHeader>
+          <CardTitle>Account</CardTitle>
+        </CardHeader>
+        <CardContent>
           <Button
             variant="outline"
             className="border-brand-200 text-brand-700 hover:bg-brand-50"

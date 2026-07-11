@@ -1,0 +1,225 @@
+---
+description: Governing rules for the Cursor agent building ReplyGuard AI
+alwaysApply: true
+---
+
+# ReplyGuard AI — Cursor Rules
+
+## Identity & Mission
+
+You are building **ReplyGuard AI** — a real-time 1:1 messaging PWA with an AI
+compose layer that rewrites drafts before sending, based on per-contact rules.
+The full spec lives in `PRD.md`. The build order lives in `BUILD_PLAN.md`.
+Read both files before writing a single line of code.
+
+---
+
+## Stack — Locked. Do Not Deviate.
+
+- **Framework:** Next.js 15, App Router, TypeScript strict mode
+- **Styling:** Tailwind CSS only — no inline styles, no CSS modules, no styled-components
+- **Components:** shadcn/ui base + three 21st.dev components (chat-interface, advanced-ai-chat-input, ai-chat). All components live in `components/ui/`
+- **Database / Auth / Realtime:** Supabase only — no Firebase, no PlanetScale, no Prisma ORM
+- **AI Layer:** Vercel AI SDK (`ai` package) with `generateObject` + Zod. Provider switching via `getModel()` in `lib/llm/models.ts` — no direct `fetch()` calls to LLM APIs
+- **Deployment:** Vercel (Next.js) — no Docker, no custom server
+
+If you think a different tool is better, write it to `NOTES.md` under `## Agent suggestions` and proceed with the locked stack.
+
+---
+
+## File & Folder Conventions
+
+```
+app/
+  (auth)/login/page.tsx          ← magic link auth page
+  chats/page.tsx                 ← conversation list
+  chats/[id]/page.tsx            ← thread view
+  chats/[id]/profile/page.tsx    ← contact rules form
+  api/
+    ai/rewrite/route.ts          ← POST /api/ai/rewrite
+    messages/send/route.ts       ← POST /api/messages/send
+    conversations/route.ts       ← GET /api/conversations
+    contacts/[id]/route.ts       ← GET + PUT /api/contacts/:id
+lib/
+  llm/
+    models.ts                    ← getModel() provider switcher
+    rewrite.ts                   ← rewriteMessage() with generateObject
+  supabase/
+    client.ts                    ← browser Supabase client (@supabase/ssr)
+    server.ts                    ← server Supabase client (@supabase/ssr)
+components/
+  ui/                            ← shadcn + 21st.dev components only
+NOTES.md                         ← v1.1 backlog + agent suggestions
+```
+
+Never create files outside this structure without asking first.
+
+---
+
+## API Routes — Thin Handlers Only
+
+- API routes (`app/api/**/route.ts`) must contain **no business logic**
+- Parse the request, call one lib function, return the response — that's it
+- All LLM logic lives in `lib/llm/`, all DB logic lives in `lib/supabase/`
+- Example correct pattern:
+
+```typescript
+// app/api/ai/rewrite/route.ts
+import { rewriteMessage } from "@/lib/llm/rewrite";
+
+export async function POST(req: Request) {
+  const { draft, contactRules, recentHistory } = await req.json();
+  const options = await rewriteMessage(draft, contactRules, recentHistory);
+  return Response.json({ options });
+}
+```
+
+---
+
+## AI Layer Rules
+
+- Always use `generateObject` from the `ai` package — never `generateText` for the rewrite endpoint
+- The Zod schema must produce exactly 3 options: `z.object({ options: z.array(z.string()).length(3) })`
+- Never hardcode a model name — always call `getModel()` from `lib/llm/models.ts`
+- Provider is selected by the `LLM_MODEL` env var: `openrouter:<model-id>` or `bedrock:<model-id>`
+- Default model when `LLM_MODEL` is unset: `openrouter:deepseek/deepseek-chat`
+- Do not add retry logic, streaming, or caching to the rewrite call in v1 — keep it a single `generateObject` call
+
+```typescript
+// lib/llm/models.ts — exact implementation, do not refactor
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { bedrock } from "@ai-sdk/amazon-bedrock";
+
+const openrouter = createOpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
+
+export function getModel(name = process.env.LLM_MODEL || "openrouter:deepseek/deepseek-chat") {
+  const [provider, ...rest] = name.split(":");
+  const modelId = rest.join(":");
+  if (provider === "bedrock") return bedrock(modelId);
+  return openrouter(modelId);
+}
+```
+
+---
+
+## Supabase Rules
+
+- Use `@supabase/ssr` for both client and server — never `@supabase/supabase-js` directly in components
+- RLS is enabled on all four tables (`users`, `contacts`, `conversations`, `messages`) — never disable it
+- Realtime subscription must use a named channel per conversation: `supabase.channel('conversation-<id>')`
+- Subscribe in a `useEffect`, always return the unsubscribe cleanup function
+- Never query the database from a Client Component — use Server Components or API routes
+- Do not ask for or invent Supabase credentials — ask the user if `.env.local` is missing them
+
+---
+
+## Auth Rules
+
+- Email magic link only — no password flow, no OAuth, no phone auth
+- Protect `/chats` and all sub-routes with a middleware or layout check that redirects to `/login` if no session
+- Use `supabase.auth.getSession()` in Server Components, `supabase.auth.onAuthStateChange()` in Client Components
+
+---
+
+## Database Schema — Exact, Do Not Alter
+
+Use the exact schema from `PRD.md` section 6. Do not rename columns, add columns, change types, or remove tables. If you believe a schema change is needed, write it to `NOTES.md` under `## Schema change requests` and use the existing schema for now.
+
+---
+
+## UI Rules
+
+- iMessage-style bubbles: sender messages right-aligned with blue background, recipient messages left-aligned with gray background
+- Use the `chat-interface` component from @tonyzebastian for the thread shell
+- Use `advanced-ai-chat-input` from @ravikatiyar162 for the compose bar — the "AI check" button lives here
+- Use the option-picker pattern from `ai-chat` by @beratberkayg for displaying the 3 rewrite options
+- The 3 rewrite option cards must also include a "send as-is" button and an inline edit option
+- Timestamps on every message bubble
+- Empty state on `/chats`: centered text "Start a conversation" — no illustration needed for v1
+
+---
+
+## Scope Enforcement (FPE — Finish Previous version Early)
+
+MVP scope = `PRD.md` section 4 only. The 5 locked features are:
+
+1. Email magic link auth
+2. Real-time 1:1 chat
+3. AI compose layer (draft → 3 rewrite options → send)
+4. Per-contact rules (tone notes, no-send rules, relationship notes)
+5. iMessage-style UI
+
+Do not build, scaffold, or stub any of the following in v1:
+
+- Analytics dashboard
+- Conversation summaries
+- Group chats
+- Native iOS / Capacitor wrapper
+- Real SMS via Twilio
+- Push notifications (APNs)
+- Apple Sign In
+- Typing indicators beyond basic UI placeholder
+- Python/FastAPI rules microservice
+
+If you catch yourself building any of the above, stop immediately, add it to `NOTES.md` under `## v1.1 backlog`, and return to the current `BUILD_PLAN.md` step.
+
+---
+
+## Build Order — Sequential, No Skipping
+
+Execute `BUILD_PLAN.md` steps in this exact order. Do not start a step until the previous step's acceptance check passes:
+
+1. Repo scaffold + 21st.dev components
+2. Supabase schema + realtime
+3. Auth (magic link)
+4. Conversation list `/chats`
+5. Thread view `/chats/[id]` + realtime delivery
+6. AI compose layer (the core feature)
+7. Contact profile `/chats/[id]/profile` + rules
+8. Local end-to-end test
+9. PWA manifest + Vercel deploy
+
+After each step: run the app, confirm no errors, tell the user what to manually test, then stop and wait for explicit go-ahead before continuing.
+
+---
+
+## Environment Variables
+
+Required in `.env.local` (never invent placeholder values — ask the user):
+
+```
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+OPENROUTER_API_KEY=
+LLM_MODEL=openrouter:deepseek/deepseek-chat
+```
+
+Never commit `.env.local` to git. Confirm `.gitignore` includes it before the first commit.
+
+---
+
+## Commit Discipline
+
+Commit after each `BUILD_PLAN.md` step with a semantic message:
+
+- `init: scaffold + ui components`
+- `feat: supabase schema + realtime`
+- `feat: auth magic link`
+- `feat: conversation list`
+- `feat: thread view + realtime`
+- `feat: ai compose layer`
+- `feat: contact profile + rules`
+- `fix: e2e test fixes`
+- `feat: pwa manifest + deploy`
+
+No squash commits. One commit per step so rollbacks are clean.
+
+---
+
+## Agent Behavior Contract
+
+- If the user doesn't respond within a step, do not proceed to the next step
+- If you encounter an ambiguity in the PRD or BUILD_PLAN, ask one specific question — don't guess
+- If a 21st.dev component doesn't install or renders broken, report it immediately and ask before substituting
+- Never rename, reorganize, or "clean up" existing working code unless the user explicitly requests it
+- `NOTES.md` is your escape valve — anything you can't do within these rules goes there

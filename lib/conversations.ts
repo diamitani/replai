@@ -23,7 +23,7 @@ export async function getConversationsForUser(
 
     const { data: otherUser } = await supabase
       .from("users")
-      .select("id, email, display_name")
+      .select("id, email, display_name, username")
       .eq("id", otherUserId)
       .single();
 

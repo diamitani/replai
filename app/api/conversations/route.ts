@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getConversationsForUser } from "@/lib/conversations";
+import { findOrCreateConversation, normalizeUsername } from "@/lib/users";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -33,70 +34,136 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { recipientEmail } = await request.json();
+  const body = await request.json();
+  const recipientUserId =
+    typeof body.recipientUserId === "string" ? body.recipientUserId : null;
+  const recipientUsername =
+    typeof body.recipientUsername === "string"
+      ? normalizeUsername(body.recipientUsername)
+      : null;
+  const recipientEmail =
+    typeof body.recipientEmail === "string"
+      ? body.recipientEmail.trim().toLowerCase()
+      : null;
 
-  if (!recipientEmail || typeof recipientEmail !== "string") {
-    return NextResponse.json({ error: "recipientEmail is required" }, { status: 400 });
+  if (!recipientUserId && !recipientUsername && !recipientEmail) {
+    return NextResponse.json(
+      { error: "Provide recipientUserId, recipientUsername, or recipientEmail" },
+      { status: 400 }
+    );
   }
 
-  const normalizedEmail = recipientEmail.trim().toLowerCase();
+  let recipient: {
+    id: string;
+    display_name: string | null;
+    username?: string | null;
+    is_discoverable?: boolean;
+  } | null = null;
 
-  if (normalizedEmail === user.email?.toLowerCase()) {
-    return NextResponse.json({ error: "Cannot start a conversation with yourself" }, { status: 400 });
-  }
+  if (recipientUserId) {
+    const { data, error } = await supabase.rpc("get_public_profiles", {
+      target_ids: [recipientUserId],
+    });
 
-  const { data: recipient, error: recipientError } = await supabase
-    .from("users")
-    .select("id, email, display_name")
-    .eq("email", normalizedEmail)
-    .maybeSingle();
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    recipient = Array.isArray(data) ? data[0] ?? null : data;
+  } else if (recipientUsername) {
+    const { data, error } = await supabase.rpc("find_user_by_username", {
+      lookup_username: recipientUsername,
+    });
 
-  if (recipientError) {
-    return NextResponse.json({ error: recipientError.message }, { status: 500 });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    recipient = Array.isArray(data) ? data[0] ?? null : data;
+  } else if (recipientEmail) {
+    if (recipientEmail === user.email?.toLowerCase()) {
+      return NextResponse.json(
+        { error: "Cannot start a conversation with yourself" },
+        { status: 400 }
+      );
+    }
+
+    const { data, error } = await supabase.rpc("find_user_by_email", {
+      lookup_email: recipientEmail,
+    });
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    recipient = Array.isArray(data) ? data[0] ?? null : data;
   }
 
   if (!recipient) {
     return NextResponse.json(
-      { error: "User not found. They need to sign up first." },
+      {
+        error:
+          "User not found. Try their @username, or ask them to share it / accept an invite.",
+      },
       { status: 404 }
     );
   }
 
-  const { data: existing } = await supabase
+  if (recipient.id === user.id) {
+    return NextResponse.json(
+      { error: "Cannot start a conversation with yourself" },
+      { status: 400 }
+    );
+  }
+
+  // Private users require an accepted invite (or existing conversation)
+  const isDiscoverable = recipient.is_discoverable !== false;
+
+  const { data: existingConversation } = await supabase
     .from("conversations")
-    .select("*")
+    .select("id")
     .or(
       `and(user_a.eq.${user.id},user_b.eq.${recipient.id}),and(user_a.eq.${recipient.id},user_b.eq.${user.id})`
     )
     .maybeSingle();
 
-  if (existing) {
-    return NextResponse.json({ conversation: existing });
+  if (!isDiscoverable && !existingConversation) {
+    const { data: acceptedInvite } = await supabase
+      .from("contact_invites")
+      .select("id")
+      .eq("status", "accepted")
+      .or(
+        `and(from_user_id.eq.${user.id},to_user_id.eq.${recipient.id}),and(from_user_id.eq.${recipient.id},to_user_id.eq.${user.id})`
+      )
+      .maybeSingle();
+
+    if (!acceptedInvite) {
+      return NextResponse.json(
+        {
+          error:
+            "This person is private. Send a contact invite, or ask them to message you first.",
+          requiresInvite: true,
+          user: {
+            id: recipient.id,
+            username: recipient.username ?? null,
+            display_name: recipient.display_name,
+            is_discoverable: false,
+          },
+        },
+        { status: 403 }
+      );
+    }
   }
 
-  const { data: conversation, error: conversationError } = await supabase
-    .from("conversations")
-    .insert({ user_a: user.id, user_b: recipient.id })
-    .select()
-    .single();
-
-  if (conversationError || !conversation) {
+  try {
+    const { conversation } = await findOrCreateConversation(
+      supabase,
+      user.id,
+      recipient.id
+    );
+    return NextResponse.json({ conversation });
+  } catch (error) {
     return NextResponse.json(
-      { error: conversationError?.message ?? "Failed to create conversation" },
+      { error: error instanceof Error ? error.message : "Failed to create conversation" },
       { status: 500 }
     );
   }
-
-  await supabase.from("contacts").upsert(
-    {
-      owner_id: user.id,
-      contact_user_id: recipient.id,
-      tone_notes: null,
-      no_send_rules: null,
-      relationship_notes: null,
-    },
-    { onConflict: "owner_id,contact_user_id" }
-  );
-
-  return NextResponse.json({ conversation });
 }
